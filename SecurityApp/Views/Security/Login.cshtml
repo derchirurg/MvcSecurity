@@ -1,0 +1,18 @@
+﻿@using SecurityApp.Models
+@model SecurityApp.Models.LoginViewModel
+
+<h2>Login with username = password</h2>
+<form asp-action="Login" method="post">
+    <input asp-for="ReturnUrl" type="hidden"/>
+    <div class="form-group">
+        <label asp-for="Username"></label>
+        <input asp-for="Username"/>
+    </div>
+    <div class="form-group">
+        <label asp-for="Password"></label>
+        <input asp-for="Password"/>
+    </div>
+    <button type="submit">Login</button>
+</form>
+
+@Html.ActionLink("With Google", "Google", new {returnUrl = Model.ReturnUrl})

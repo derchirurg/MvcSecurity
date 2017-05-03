@@ -2,11 +2,17 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.CookiePolicy;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.IdentityModel.Tokens;
+using SecurityApp.Controllers;
+using SecurityApp.Security;
 
 namespace SecurityApp
 {
@@ -29,6 +35,25 @@ namespace SecurityApp
         {
             // Add framework services.
             services.AddMvc();
+            services.AddAuthorization(options =>
+            {
+                options.AddPolicy("Is16", builder =>
+                {
+                    builder.AddRequirements(new MinimumAgeRequirement(16));
+                });
+   
+                options.AddPolicy("InvoiceReader", builder =>
+                {
+                    builder.RequireClaim("invoice", "read", "write");
+                });
+                options.AddPolicy("InvoiceWriter", builder =>
+                {
+                    builder.RequireClaim("invoice", "write");
+                });
+
+            });
+            services.AddSingleton<IAuthorizationHandler, InvoiceAuthorizationRequirementHandler>();
+            services.AddScoped<IInvoiceService, InvoiceService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -47,8 +72,55 @@ namespace SecurityApp
                 app.UseExceptionHandler("/Home/Error");
             }
 
+
+            app.UseCookiePolicy(new CookiePolicyOptions
+            {
+                Secure = CookieSecurePolicy.Always,
+                HttpOnly = HttpOnlyPolicy.Always,
+                OnAppendCookie = context =>
+                {
+                    context.CookieOptions.Expires = DateTimeOffset.Now.AddMinutes(10);
+                }
+            });
+
+
             app.UseStaticFiles();
 
+
+            app.UseCookieAuthentication(new CookieAuthenticationOptions()
+            {
+                AuthenticationScheme = "MyCookies",
+                CookieHttpOnly = true,
+                LoginPath = new PathString("/Security/Login"),
+                AccessDeniedPath = new PathString("/Security/Nope"),
+                AutomaticAuthenticate = true,
+                AutomaticChallenge = true
+            });
+
+            app.UseCookieAuthentication(new CookieAuthenticationOptions()
+            {
+                AuthenticationScheme = "External",
+                CookieHttpOnly = true,
+                AutomaticAuthenticate = false,
+                AutomaticChallenge = false
+            });
+
+
+            app.UseOpenIdConnectAuthentication(new OpenIdConnectOptions()
+                {
+                    AuthenticationScheme = "Google",
+                    SignInScheme = "External",
+                    Authority = "https://accounts.google.com/",
+                    ClientId = "906661353041-3671qbksstne9jdue54j10d1n83tejjs.apps.googleusercontent.com",
+                    ClientSecret = "GeA_0EQiOKrQ469CQmjdJ2It",
+                    TokenValidationParameters = new TokenValidationParameters()
+                    {
+                        NameClaimType = "name"
+                    },
+                    AutomaticAuthenticate = false,
+                    AutomaticChallenge = false
+                }
+            );
             app.UseMvc(routes =>
             {
                 routes.MapRoute(
