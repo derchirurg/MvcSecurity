@@ -34,7 +34,6 @@ namespace SecurityApp
         public void ConfigureServices(IServiceCollection services)
         {
             // Add framework services.
-            services.AddMvc();
             services.AddAuthorization(options =>
             {
                 options.AddPolicy("Is16", builder =>
@@ -52,7 +51,8 @@ namespace SecurityApp
                 });
 
             });
-            services.AddSingleton<IAuthorizationHandler, InvoiceAuthorizationRequirementHandler>();
+
+            services.AddMvc();
             services.AddScoped<IInvoiceService, InvoiceService>();
         }
 
@@ -71,17 +71,6 @@ namespace SecurityApp
             {
                 app.UseExceptionHandler("/Home/Error");
             }
-
-
-            app.UseCookiePolicy(new CookiePolicyOptions
-            {
-                Secure = CookieSecurePolicy.Always,
-                HttpOnly = HttpOnlyPolicy.Always,
-                OnAppendCookie = context =>
-                {
-                    context.CookieOptions.Expires = DateTimeOffset.Now.AddMinutes(10);
-                }
-            });
 
 
             app.UseStaticFiles();
